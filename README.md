@@ -13,8 +13,10 @@
 
 ## 學習歷程
 
-使用datacamp自學R語言導論至ch5
+使用datacamp自學R語言導論至ch5 (課前)
 
 ## 作業進度
 
-完成practice 1,2 
+完成practice 1,2 (課堂中)
+完成practice 3
+
