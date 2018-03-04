@@ -24,3 +24,4 @@
 
 完成practice 3 (3/1)
 
+完成hw1 task1~task4 (3/4)
