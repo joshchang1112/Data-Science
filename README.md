@@ -15,8 +15,13 @@
 
 使用datacamp自學R語言導論至ch5 (課前)
 
+完成datacamp R語言導論 (3/1)
+
+
 ## 作業進度
 
 完成practice 1,2 (課堂中)
-完成practice 3
 
+完成practice 3 (3/1)
+
+完成hw1 task1~task4 (3/4)
