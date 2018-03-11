@@ -1,0 +1,87 @@
+---
+title: "HW2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## NBA teams statistics
+
+I use this R crawler to catch the most commom NBA teams statistics on the NBA website, the statistis include player names, players number, games , points , rebounds, assists and field goal percentge. 
+
+(To prevent the R markdown too complex , I didn't write it in the R crawler code )
+
+Next, I can use vectors to record the NBA team names , and then use the 'paste' fuction to change the address of website , so that I can catch the all 30 teams players statistics!
+
+And I use the team "Milwaukee Bucks" for my example because it's my favorite team in NBA!!!
+
+## RCrawler
+```{r }
+library(rvest) #開啟rvest套件
+
+#球隊名稱
+nbateam <- c("bucks","magic", "hawks", "clippers", "knicks","pelicans", "raptors")
+
+#爬蟲的網站
+title1 <- read_html("http://www.nba.com/bucks/stats?sort=PTS")
+buckstitle <- c(".playerName", ".playerNumber", ".gp", ".pts", ".reb", ".ast", ".fg_pct")
+name <- c("Player", "Number", "Games", "Pts", "Reb", "Ast","Fg%")
+
+i <- 1 
+
+#爬蟲部分
+for(i in c(1:length(buckstitle))){
+  title <- html_nodes(title1,buckstitle[i])
+  title <- html_text(title)
+  title <- iconv(title,"UTF-8")
+  if(i > 2){
+    newtitle <- title[2:(length(title)/2)]
+    if(i == 3){
+      game <- as.numeric(newtitle)
+    }
+  }else{
+    newtitle <- title[1:(length(title)/2)]
+  }
+  if(i > 3 && i < 7){
+    newtitle <- round(as.numeric(newtitle) / game , digits = 1)
+  }
+    
+  if(i == 1){
+    frame <- data.frame(newtitle)
+  }else{
+      frame <- data.frame(frame, newtitle)
+  }
+}
+
+#為欄位命名
+colnames(frame) <- name 
+
+```
+
+## Sorting with points
+
+```{r, echo=FALSE}
+#Sort with pts
+frame1 <- frame[order(frame$Pts , decreasing = TRUE),]
+frame1
+```
+
+## Sorting with rebounds
+```{r, echo=FALSE}
+#Sort with reb
+frame2 <- frame[order(frame$Reb , decreasing = TRUE),]
+frame2
+```
+
+## Sorting with assists
+```{r, echo=FALSE}
+#Sort with Ast
+frame3 <- frame[order(frame$Ast , decreasing = TRUE),]
+frame3
+```
+
+#Advanced problems
+
+Something problems that I have is if one player has NA in his statistics , the R code will compile error , because the number of different statistic are not the same, and I can not solve it now :( 
