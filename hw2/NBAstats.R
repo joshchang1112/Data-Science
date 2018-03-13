@@ -1,49 +1,57 @@
 rm(list = ls())
-library(rvest) #開啟rvest套件
+library(XML)
+library(rvest)
 
-#球隊名稱
-nbateam <- c("bucks","magic", "hawks", "clippers", "knicks", "pelicans", "raptors")
+#爬取30支球隊的名稱
+teams <- read_html("http://www.nba.com/teams")
+teamstitle <- c(".team__list")
+title <- html_nodes(teams,teamstitle)
+title <- html_text(title)
+title <- iconv(title,"UTF-8")
+title <- tolower(title)
 
-#爬蟲的網站
-title1 <- read_html("http://www.nba.com/bucks/stats?sort=PTS")
-buckstitle <- c(".playerName", ".playerNumber", ".gp", ".pts", ".reb", ".ast", ".fg_pct")
-name <- c("Player", "Number", "Games", "Pts", "Reb", "Ast","Fg%")
+# title中的index 1~30 代表30支球隊
+b <- strsplit(title[17],split=" ")
+names(b) <- "Teamname"
+b$Teamname[2]
 
-i <- 1 
+#爬取球隊每位球員的數據
+url <- paste("http://www.nba.com/" , b$Teamname[2] , "/stats", sep="")
 
-for(i in c(1:length(buckstitle))){
-  title <- html_nodes(title1,buckstitle[i])
-  title <- html_text(title)
-  title <- iconv(title,"UTF-8")
-  if(i > 2){
-    newtitle <- title[2:(length(title)/2)]
-    if(i == 3){
-      game <- as.numeric(newtitle)
-    }
-  }else{
-    newtitle <- title[1:(length(title)/2)]
-  }
-  if(i > 3 && i < 7){
-    newtitle <- round(as.numeric(newtitle) / game , digits = 1)
-  }
-    
-  if(i == 1){
-    frame <- data.frame(newtitle)
-  }else{
-      frame <- data.frame(frame, newtitle)
-  }
+dt1 <- readHTMLTable(url)
+frame <- dt1[[2]]
+#names(frame)
+
+#將名字中的亂碼移除
+playername <- as.character(frame$Player)
+playername1 <- strsplit(playername , split = "\u0095", fixed=T)
+
+frame$Player <- as.character(frame$Player)
+for (i in 1:length(frame$Player)) {
+  frame$Player[i] <- playername1[[i]][1]
 }
 
-colnames(frame) <- name 
+frame <- data.frame(frame$Player,frame$G,frame$PTS,frame$`FG%`,frame$`3P%`,frame$REB,frame$AST,frame$STL)
+names(frame) <- c("Player","G","PTS","FG%","3P%","REB","AST","STL") 
 
 #Sort with pts
-frame1 <- frame[order(frame$Pts , decreasing = TRUE),]
+frame1 <- frame[order(as.numeric(as.character(frame$PTS)) , decreasing = TRUE),]
 
 #Sort with reb
-frame2 <- frame[order(frame$Reb , decreasing = TRUE),]
+frame2 <- frame[order(as.numeric(as.character(frame$REB)) , decreasing = TRUE),]
 
-#Sort with Ast
-frame3 <- frame[order(frame$Ast , decreasing = TRUE),]
+#sort with ast
+frame3 <- frame[order(as.numeric(as.character(frame$AST)) , decreasing = TRUE),]
+
+#sort with stl
+frame4 <- frame[order(as.numeric(as.character(frame$STL)) , decreasing = TRUE),]
+
+
+abc <- as.character(frame$`3P%`)
+num3pt <- as.numeric(strsplit(abc,split="%"))
+
+#sort with 3pt%
+frame5 <- frame[order((num3pt) , decreasing = TRUE),]
 
 
 

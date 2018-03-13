@@ -124,117 +124,103 @@ $(document).ready(function () {
 
 <div id="nba-teams-statistics" class="section level2">
 <h2>NBA teams statistics</h2>
-<p>I use this R crawler to catch the most commom NBA teams statistics on the NBA website, the statistis include player names, players number, games , points , rebounds, assists and field goal percentge.</p>
-<p>(To prevent the R markdown too complex , I didn’t write it in the R crawler code )</p>
-<p>Next, I can use vectors to record the NBA team names , and then use the ‘paste’ fuction to change the address of website , so that I can catch the all 30 teams players statistics!</p>
+<p>First, I use this R crawler to catch the NBA team names , and then use the ‘strspilt’and ’paste’ fuction to change the address of website , so that I can catch the all 30 teams players statistics!</p>
+<p>Next, I catch the most commom NBA teams statistics on the NBA website, the statistis include player names, players number, games , points , rebounds, assists….etc.</p>
+<p>Final, I sort five of the most important statistics in NBA teams, and show the team leader of the statistics, so that I can find the statistics I want to see at once!</p>
 <p>And I use the team “Milwaukee Bucks” for my example because it’s my favorite team in NBA!!!</p>
 </div>
 <div id="rcrawler" class="section level2">
 <h2>RCrawler</h2>
-<pre class="r"><code>library(rvest) #開啟rvest套件</code></pre>
-<pre><code>## Loading required package: xml2</code></pre>
-<pre class="r"><code>#球隊名稱
-nbateam &lt;- c(&quot;bucks&quot;,&quot;magic&quot;, &quot;hawks&quot;, &quot;clippers&quot;, &quot;knicks&quot;,&quot;pelicans&quot;, &quot;raptors&quot;)
+<pre class="r"><code>library(XML)
+library(rvest)
 
-#爬蟲的網站
-title1 &lt;- read_html(&quot;http://www.nba.com/bucks/stats?sort=PTS&quot;)
-buckstitle &lt;- c(&quot;.playerName&quot;, &quot;.playerNumber&quot;, &quot;.gp&quot;, &quot;.pts&quot;, &quot;.reb&quot;, &quot;.ast&quot;, &quot;.fg_pct&quot;)
-name &lt;- c(&quot;Player&quot;, &quot;Number&quot;, &quot;Games&quot;, &quot;Pts&quot;, &quot;Reb&quot;, &quot;Ast&quot;,&quot;Fg%&quot;)
+#爬取30支球隊的名稱
+teams &lt;- read_html(&quot;http://www.nba.com/teams&quot;)
+teamstitle &lt;- c(&quot;.team__list&quot;)
+title &lt;- html_nodes(teams,teamstitle)
+title &lt;- html_text(title)
+title &lt;- iconv(title,&quot;UTF-8&quot;)
+title &lt;- tolower(title)
 
-i &lt;- 1 
+# title中的index 1~30 代表30支球隊
+b &lt;- strsplit(title[17],split=&quot; &quot;)
+names(b) &lt;- &quot;Teamname&quot;
+#b$Teamname[2]
 
-#爬蟲部分
-for(i in c(1:length(buckstitle))){
-  title &lt;- html_nodes(title1,buckstitle[i])
-  title &lt;- html_text(title)
-  title &lt;- iconv(title,&quot;UTF-8&quot;)
-  if(i &gt; 2){
-    newtitle &lt;- title[2:(length(title)/2)]
-    if(i == 3){
-      game &lt;- as.numeric(newtitle)
-    }
-  }else{
-    newtitle &lt;- title[1:(length(title)/2)]
-  }
-  if(i &gt; 3 &amp;&amp; i &lt; 7){
-    newtitle &lt;- round(as.numeric(newtitle) / game , digits = 1)
-  }
-    
-  if(i == 1){
-    frame &lt;- data.frame(newtitle)
-  }else{
-      frame &lt;- data.frame(frame, newtitle)
-  }
+#爬取球隊每位球員的數據
+url &lt;- paste(&quot;http://www.nba.com/&quot; , b$Teamname[2] , &quot;/stats&quot;, sep=&quot;&quot;)
+
+dt1 &lt;- readHTMLTable(url)
+frame &lt;- dt1[[2]]
+#names(frame)
+
+#將名字中的亂碼移除
+playername &lt;- as.character(frame$Player)
+playername1 &lt;- strsplit(playername , split = &quot;\u0095&quot;, fixed=T)
+
+frame$Player &lt;- as.character(frame$Player)
+for (i in 1:length(frame$Player)) {
+  frame$Player[i] &lt;- playername1[[i]][1]
 }
 
-#為欄位命名
-colnames(frame) &lt;- name </code></pre>
+frame &lt;- data.frame(frame$Player,frame$G,frame$PTS,frame$`FG%`,frame$`3P%`,frame$REB,frame$AST,frame$STL)
+names(frame) &lt;- c(&quot;Player&quot;,&quot;G&quot;,&quot;PTS&quot;,&quot;FG%&quot;,&quot;3P%&quot;,&quot;REB&quot;,&quot;AST&quot;,&quot;STL&quot;) 
+
+abc &lt;- as.character(frame$`3P%`)
+num3pt &lt;- as.numeric(strsplit(abc,split=&quot;%&quot;))</code></pre>
 </div>
-<div id="sorting-with-points" class="section level2">
-<h2>Sorting with points</h2>
-<pre><code>##                   Player Number Games  Pts  Reb Ast   Fg%
-## 9  Giannis Antetokounmpo     34    62 27.2 10.2 4.8   53%
-## 5        Khris Middleton     22    66 19.9  5.2 4.0 46.4%
-## 2           Eric Bledsoe      6    58 17.3  3.8 4.6 45.3%
-## 14       Malcolm Brogdon     13    46 13.3  3.3 3.2 48.7%
-## 11         Jabari Parker     12    15 11.3  4.2 1.3 49.2%
-## 3            John Henson     31    61  8.8  6.8 1.3 58.1%
-## 6        Mirza Teletovic     35    10  7.1  2.3 1.0 43.9%
-## 8             Tony Snell     21    59  7.1  2.0 1.3 43.6%
-## 4           Tyler Zeller     44    53  6.8  4.6 0.6 55.6%
-## 13            Thon Maker      7    64  4.9  3.3 0.6 41.2%
-## 17        Sterling Brown     23    41  4.5  3.0 0.4 41.1%
-## 10   Matthew Dellavedova      8    37  4.4  1.7 3.8 36.9%
-## 7       Shabazz Muhammad     15    34  3.7  1.4 0.2 39.2%
-## 1            Jason Terry      3    35  3.1  0.9 1.1 38.4%
-## 15      Marshall Plumlee     40     7  2.0  2.3 0.3 33.3%
-## 16           D.J. Wilson      5    20  1.0  0.4 0.2 57.1%
-## 12        Xavier Munford      0     6  0.5  0.2 0.7 16.7%</code></pre>
+<div id="points-leader" class="section level2">
+<h2>Points Leader</h2>
+<pre><code>##                     Player  G  PTS   FG%   3P%  REB AST STL
+## 9  Giannis Antetokounmpo34 63 27.1   53%   30% 10.1 4.7 1.4
+## 6        Khris Middleton22 67 19.9 46.6% 34.5%  5.2   4 1.3
+## 3            Eric Bledsoe6 59 17.3 45.3% 33.6%  3.8 4.6   2
+## 1       Brandon Jennings11  1   16 55.6%   50%    8  12  —
+## 14       Malcolm Brogdon13 46 13.3 48.7% 37.8%  3.3 3.2 0.9
+## 11         Jabari Parker12 16 10.9 49.3% 43.8%  4.1 1.4 0.6</code></pre>
 </div>
-<div id="sorting-with-rebounds" class="section level2">
-<h2>Sorting with rebounds</h2>
-<pre><code>##                   Player Number Games  Pts  Reb Ast   Fg%
-## 9  Giannis Antetokounmpo     34    62 27.2 10.2 4.8   53%
-## 3            John Henson     31    61  8.8  6.8 1.3 58.1%
-## 5        Khris Middleton     22    66 19.9  5.2 4.0 46.4%
-## 4           Tyler Zeller     44    53  6.8  4.6 0.6 55.6%
-## 11         Jabari Parker     12    15 11.3  4.2 1.3 49.2%
-## 2           Eric Bledsoe      6    58 17.3  3.8 4.6 45.3%
-## 13            Thon Maker      7    64  4.9  3.3 0.6 41.2%
-## 14       Malcolm Brogdon     13    46 13.3  3.3 3.2 48.7%
-## 17        Sterling Brown     23    41  4.5  3.0 0.4 41.1%
-## 6        Mirza Teletovic     35    10  7.1  2.3 1.0 43.9%
-## 15      Marshall Plumlee     40     7  2.0  2.3 0.3 33.3%
-## 8             Tony Snell     21    59  7.1  2.0 1.3 43.6%
-## 10   Matthew Dellavedova      8    37  4.4  1.7 3.8 36.9%
-## 7       Shabazz Muhammad     15    34  3.7  1.4 0.2 39.2%
-## 1            Jason Terry      3    35  3.1  0.9 1.1 38.4%
-## 16           D.J. Wilson      5    20  1.0  0.4 0.2 57.1%
-## 12        Xavier Munford      0     6  0.5  0.2 0.7 16.7%</code></pre>
+<div id="rebounds-leader" class="section level2">
+<h2>Rebounds Leader</h2>
+<pre><code>##                     Player  G  PTS   FG%   3P%  REB AST STL
+## 9  Giannis Antetokounmpo34 63 27.1   53%   30% 10.1 4.7 1.4
+## 1       Brandon Jennings11  1   16 55.6%   50%    8  12  —
+## 4            John Henson31 62  8.8 58.2%    —  6.8 1.3 0.5
+## 6        Khris Middleton22 67 19.9 46.6% 34.5%  5.2   4 1.3
+## 5           Tyler Zeller44 54  6.9   56% 35.7%  4.6 0.6 0.2
+## 11         Jabari Parker12 16 10.9 49.3% 43.8%  4.1 1.4 0.6</code></pre>
 </div>
-<div id="sorting-with-assists" class="section level2">
-<h2>Sorting with assists</h2>
-<pre><code>##                   Player Number Games  Pts  Reb Ast   Fg%
-## 9  Giannis Antetokounmpo     34    62 27.2 10.2 4.8   53%
-## 2           Eric Bledsoe      6    58 17.3  3.8 4.6 45.3%
-## 5        Khris Middleton     22    66 19.9  5.2 4.0 46.4%
-## 10   Matthew Dellavedova      8    37  4.4  1.7 3.8 36.9%
-## 14       Malcolm Brogdon     13    46 13.3  3.3 3.2 48.7%
-## 3            John Henson     31    61  8.8  6.8 1.3 58.1%
-## 8             Tony Snell     21    59  7.1  2.0 1.3 43.6%
-## 11         Jabari Parker     12    15 11.3  4.2 1.3 49.2%
-## 1            Jason Terry      3    35  3.1  0.9 1.1 38.4%
-## 6        Mirza Teletovic     35    10  7.1  2.3 1.0 43.9%
-## 12        Xavier Munford      0     6  0.5  0.2 0.7 16.7%
-## 4           Tyler Zeller     44    53  6.8  4.6 0.6 55.6%
-## 13            Thon Maker      7    64  4.9  3.3 0.6 41.2%
-## 17        Sterling Brown     23    41  4.5  3.0 0.4 41.1%
-## 15      Marshall Plumlee     40     7  2.0  2.3 0.3 33.3%
-## 7       Shabazz Muhammad     15    34  3.7  1.4 0.2 39.2%
-## 16           D.J. Wilson      5    20  1.0  0.4 0.2 57.1%</code></pre>
+<div id="assists-leader" class="section level2">
+<h2>Assists Leader</h2>
+<pre><code>##                     Player  G  PTS   FG%   3P%  REB AST STL
+## 1       Brandon Jennings11  1   16 55.6%   50%    8  12  —
+## 9  Giannis Antetokounmpo34 63 27.1   53%   30% 10.1 4.7 1.4
+## 3            Eric Bledsoe6 59 17.3 45.3% 33.6%  3.8 4.6   2
+## 6        Khris Middleton22 67 19.9 46.6% 34.5%  5.2   4 1.3
+## 10    Matthew Dellavedova8 37  4.4 36.9% 37.7%  1.7 3.8 0.4
+## 14       Malcolm Brogdon13 46 13.3 48.7% 37.8%  3.3 3.2 0.9</code></pre>
 </div>
-<div id="advanced-problems" class="section level1">
-<h1>Advanced problems</h1>
+<div id="steals-leader" class="section level2">
+<h2>Steals Leader</h2>
+<pre><code>##                     Player  G  PTS   FG%   3P%  REB AST STL
+## 3            Eric Bledsoe6 59 17.3 45.3% 33.6%  3.8 4.6   2
+## 9  Giannis Antetokounmpo34 63 27.1   53%   30% 10.1 4.7 1.4
+## 6        Khris Middleton22 67 19.9 46.6% 34.5%  5.2   4 1.3
+## 14       Malcolm Brogdon13 46 13.3 48.7% 37.8%  3.3 3.2 0.9
+## 8             Tony Snell21 60  7.2 43.8% 41.3%    2 1.4 0.7
+## 17        Sterling Brown23 42  4.7 42.5% 38.2%    3 0.5 0.7</code></pre>
+</div>
+<div id="pt-leader" class="section level2">
+<h2>3pt% Leader</h2>
+<pre><code>##                Player  G  PTS   FG%   3P% REB AST STL
+## 1  Brandon Jennings11  1   16 55.6%   50%   8  12  —
+## 11    Jabari Parker12 16 10.9 49.3% 43.8% 4.1 1.4 0.6
+## 8        Tony Snell21 60  7.2 43.8% 41.3%   2 1.4 0.7
+## 16       D.J. Wilson5 21  0.9 57.1%   40% 0.4 0.1 0.1
+## 17   Sterling Brown23 42  4.7 42.5% 38.2%   3 0.5 0.7
+## 14  Malcolm Brogdon13 46 13.3 48.7% 37.8% 3.3 3.2 0.9</code></pre>
+</div>
+<div id="advanced-problemsalready-solved" class="section level2">
+<h2>Advanced problems(already solved)</h2>
 <p>Something problems that I have is if one player has NA in his statistics , the R code will compile error , because the number of different statistic are not the same, and I can not solve it now :(</p>
 </div>
 
