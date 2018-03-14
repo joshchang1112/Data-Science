@@ -58,9 +58,15 @@ abc <- as.character(frame$`3P%`)
 num3pt <- as.numeric(strsplit(abc,split="%"))
 ```
 
+## Player Statistics
+
+```{r, echo=FALSE}
+frame
+```
+
 ## Points Leader
 
-```{r, echo=FALSE,,warning=FALSE}
+```{r, echo=FALSE,warning=FALSE}
 #Sort with pts
 frame1 <- frame[order(as.numeric(as.character(frame$PTS)) , decreasing = TRUE),]
 head(frame1)

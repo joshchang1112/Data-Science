@@ -34,6 +34,9 @@ for (i in 1:length(frame$Player)) {
 frame <- data.frame(frame$Player,frame$G,frame$PTS,frame$`FG%`,frame$`3P%`,frame$REB,frame$AST,frame$STL)
 names(frame) <- c("Player","G","PTS","FG%","3P%","REB","AST","STL") 
 
+#Every player statistics
+frame
+
 #Sort with pts
 frame1 <- frame[order(as.numeric(as.character(frame$PTS)) , decreasing = TRUE),]
 
