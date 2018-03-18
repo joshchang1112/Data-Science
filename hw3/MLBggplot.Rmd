@@ -1,0 +1,213 @@
+---
+title: "Statistics of MLB"
+author: "Josh Chang"
+date: "2018/3/17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+這次的R Markdown 視覺化分析作業 想探討 在過去這一年 MLB中的眾多打擊數據中 哪個跟勝場數最有關係～ 
+
+通常我們在衡量一個選手時 最常注意的就是他的打擊率跟全壘打數 如果打擊率高 代表你擊出安打的比率高 如果你的全壘打很多 則代表你能一棒就讓球隊的得分變高 然而 其實還有一些我們熟知 但卻又不是那麼看重的數據 像是二壘 三壘安打數 盜壘 等等
+到底在去年中 哪項數據跟球隊的勝場是最具有相關性的呢？
+
+以下我會採用國外網站所提供的各項打擊數據 先觀察圖表的特性 看看哪項數據最接近一直線(代表相關性最大) 最後再用相關係數的函式cor()來驗證我得到的結果！
+
+
+## R crawler
+
+```{r , message=FALSE, warning=FALSE}
+library(XML)
+library(rvest)
+library(dplyr)
+#爬取30支球隊全壘打的數量
+homeruns <- read_html("https://www.baseball-reference.com/leagues/MLB/2017.shtml")
+homerunstitle <- c("tbody td.left+ .right")
+HR <- html_nodes(homeruns,homerunstitle)
+HR <- html_text(HR)
+HR <- iconv(HR,"UTF-8")
+HR <- HR[1:30]
+#HR
+
+
+
+#爬取30支球隊的名稱
+teams <- read_html("https://www.baseball-reference.com/teams/")
+teamstitle <- c("#teams_active .left a")
+Team <- html_nodes(teams,teamstitle)
+Team <- html_text(Team)
+Team <- iconv(Team,"UTF-8")
+#Team
+
+df1 = data.frame(Team, HR)
+
+#爬取30支球隊的戰績
+winloses <- read_html("http://www.espn.com/mlb/standings/_/sort/gamesbehind/dir/asc/season/2017/group/overall")
+winlosestitle <- c(".Table2__td:nth-child(1) .stat-cell , .hide-mobile a")
+Winlose <- html_nodes(winloses,winlosestitle)
+Winlose <- html_text(Winlose)
+Winlose <- iconv(Winlose,"UTF-8")
+#Winlose
+
+df2 <- data.frame(Winlose[1:30],Winlose[31:60])
+
+winlosestitle <- c(".Table2__td:nth-child(2) .stat-cell")
+Winlose <- html_nodes(winloses,winlosestitle)
+Winlose <- html_text(Winlose)
+Winlose <- iconv(Winlose,"UTF-8")
+df2 <- data.frame(df2,Winlose[1:30])
+names(df2) <- c("Team", "Wins", "Loses")
+
+#將兩個表格合併
+df <- merge(df1, df2, by = "Team")
+
+#抓取球隊分別位於的兩聯盟
+areas <- read_html("https://www.cbssports.com/mlb/teams")
+areastitle <- c(".title td , td > a+ a")
+Areas <- html_nodes(areas,areastitle)
+Areas <- html_text(Areas)
+Areas <- iconv(Areas,"UTF-8")
+#Areas
+
+df2 <- data.frame(union(Areas[2:16] ,Areas[18:32]))
+df2$Areas[1:15] <- Areas[1]
+df2$Areas[16:30] <- Areas[17]
+names(df2) <- c("Team","Conference")
+df <- merge(df, df2, by = "Team")
+
+#更多數據 ex:2B 3B 盜壘 被三振
+stats <- read_html("https://www.baseball-reference.com/leagues/MLB/2017.shtml")
+statstitle <- c("#teams_standard_batting tbody .right:nth-child(18) , #teams_standard_batting tbody .right:nth-child(14) , #teams_standard_batting tbody td.left")
+stat <- html_nodes(stats,statstitle)
+stat <- html_text(stat)
+stat <- iconv(stat,"UTF-8")
+#stat
+count <- 1
+Double <- c()
+Triple <- c()
+Stolen <- c()
+Batting <- c()
+while(count <= 120){
+  if(count %% 4 == 0){
+    Batting[count / 4 ] <- stat[count]
+  }else if(count %% 4 == 1){
+    Double[count / 4 + 1] <- stat[count]
+  }else if(count %% 4 == 2){
+    Triple[count / 4 + 1] <- stat[count]
+  }else{
+    Stolen[count / 4 + 1] <- stat[count]
+  }
+  count <- count + 1
+}
+df$Double <- as.numeric(Double)
+df$Triple <- as.numeric(Triple)
+df$Stolen <- as.numeric(Stolen)
+df$Batting <- as.numeric(Batting)
+
+df$Wins <- as.numeric(as.character(df$Wins))
+df$HR <- as.numeric(as.character(df$HR))
+df <- arrange(df,desc(Wins))
+```
+
+## Team Statistics
+```{r}
+library(ggplot2)
+df
+```
+
+## Team Conferences 
+
+```{r }
+ggplot(data = df, 
+  aes(x = Conference,fill = Conference))+
+  geom_bar(colour = "black")
+
+```
+
+## Records
+
+```{r}
+ggplot(data = df, aes(x = Wins,fill = Conference)) +
+geom_histogram(bins = 8,colour="black")
+```
+
+
+## Homeruns v.s. records
+
+```{r}
+ggplot(data = df, aes(x = HR, y=Wins)) +
+geom_point(aes(colour = Conference),size =3)
+```
+
+## Doubles v.s. records
+
+```{r}
+ggplot(data = df, aes(x = Double, y=Wins)) +
+geom_point(aes(colour = Conference),size =3)
+```
+
+## Triples v.s. records
+
+```{r}
+ggplot(data = df, aes(x = Triple, y=Wins)) +
+geom_point(aes(colour = Conference),size =3)
+```
+
+## Stolens v.s. records
+
+```{r}
+ggplot(data = df, aes(x = Stolen, y=Wins)) +
+geom_point(aes(colour = Conference),size =3)
+```
+
+## Batting v.s. records
+
+```{r}
+ggplot(data = df, aes(x = Batting, y=Wins)) +
+geom_point(aes(colour = Conference),size =3)
+
+```
+
+
+## Conclusion
+
+從以上的圖來看 結果看起來跟我當初想像的有點出入 其中 看起來最像一條直線的 竟然不是打擊率跟全壘打數 而是二壘安打數 而三壘安打跟盜壘跟戰績明顯地看出不是十分相關 
+
+最後我們用 函式再來檢查看看吧～
+```{r}
+cor(df$HR,df$Wins)
+cor(df$Double,df$Wins)
+cor(df$Triple,df$Wins)
+cor(df$Stolen,df$Wins)
+cor(df$Batting,df$Wins)
+```
+
+結果就跟我們上面的圖一樣 二壘安打跟勝場數的相關係數來到0.57 也是上面數據中最高的
+其他幾項也都有差不多0.3上下的相關係數
+而令人比較意外的是 三壘安打數 竟然是呈現負相關(-0.1) 雖然不大 但仍可以看出 一支球隊的戰力 可能跟他能擊出多少支三壘安打沒有正向的關係
+更多的可能是運氣及速度的成分
+
+
+說到速度 那讓我們來做最後一個觀察 會盜壘的人 肯定跑步速度很快
+那它跟三壘安打的相關性呢?
+
+
+## Triples v.s. Stolen
+
+```{r}
+ggplot(data = df, aes(x = Triple, y=Stolen)) +
+geom_point(aes(colour = Conference),size =3)
+
+cor(df$Triple , df$Stolen)
+```
+
+結果顯示 這兩者幾乎沒有相關QQ 而也間接說明了三壘安打的產生 
+真的有很大一部分是需要機遇的 然而 棒球場上除了打擊數據外 投手也是另一項很重要的環節 所以可能有些球隊的全壘打打非常多 但 他們的投手可能也讓對方得了很多分 導致戰績不如預期 這也是非常有可能發生的事 
+
+不過 從這次的分析來看 我們確實能知道 除了全壘打和打擊率以外
+二壘安打的數量 也是非常重要的數據 而這項數據也確實可以跟一支球隊的戰績有正面的相關！
