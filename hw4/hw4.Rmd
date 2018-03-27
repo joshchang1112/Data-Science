@@ -1,0 +1,89 @@
+---
+title: "HW4"
+author: "Josh Chang"
+date: "2018/3/28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## SBL超級籃球聯賽文字雲
+
+#使用套件
+```{r , message=FALSE}
+library(devtools)
+library(Rfacebook)
+library("jiebaR")
+library(tm)
+library(NLP) 
+library(wordcloud2)
+```
+
+# 抓取臉書資料
+```{r}
+token <- "EAACEdEose0cBAPJ3LQ8ZCxRMC1jMblISr2TV3CzvHxvG8I6wvGu4zvzKNJTxZAaIFelCgmdOu64UmkuF6XPebwcPivZBKzkIDHc4tiAGq8RwGKBv0WYywx34NfxtRj3e4SfFzZAToslSH59QhEzNTNl4JFSQBZB4KVzAnDWSeG55U2ye8iGcJ1zwcl4VJctSJU7OZCIZA7yiwZDZD"
+
+page.id <- "359745807519263"
+page <- getPage(page.id, token, n = 80)
+
+Page <- subset(page, select = c(from_id, message))
+colnames(Page) <- c("doc_id","text")
+```
+
+# 文本清理
+```{r}
+toSpace <- content_transformer(function(x, pattern) {
+  return (gsub(pattern, " ", x))}
+)
+docs <- VCorpus(DataframeSource(Page))
+inspect(docs)
+docs<-tm_map(docs,stripWhitespace)
+docs<-tm_map(docs,removeNumbers)
+docs<-tm_map(docs,removePunctuation)
+docs <- tm_map(docs, toSpace, "的")
+docs <- tm_map(docs, toSpace, "年")
+docs <- tm_map(docs, toSpace, "我")
+docs <- tm_map(docs, toSpace, "有")
+docs <- tm_map(docs, toSpace, "了")
+docs <- tm_map(docs, toSpace, "是")
+docs <- tm_map(docs, toSpace, "很")
+docs <- tm_map(docs, toSpace, "都")
+docs <- tm_map(docs, toSpace, "在")
+docs <- tm_map(docs, toSpace, "和")
+docs <- tm_map(docs, toSpace, "他")
+docs <- tm_map(docs, toSpace, "為")
+docs <- tm_map(docs, toSpace, "跟")
+docs <- tm_map(docs, toSpace, "就")
+docs <- tm_map(docs, toSpace, "也")
+docs <- tm_map(docs, toSpace, "與")
+docs <- tm_map(docs, toSpace, "以")
+docs <- tm_map(docs, toSpace, "讓")
+docs <- tm_map(docs, toSpace, "日")
+docs <- tm_map(docs, toSpace, "月")
+docs <- tm_map(docs, toSpace, "到")
+for(i in seq(docs)){
+  docs[[i]]<-gsub('[[:punct:]]', '', docs[[i]])
+  docs[[i]]<-gsub("，"," ",docs[[i]])
+  docs[[i]]<-gsub("-"," ",docs[[i]])
+}
+```
+
+# 製作文字雲
+```{r}
+cc = worker()
+num = c()
+for (i in c(1:80)){
+    num = append(num,docs[[i]],length(num))
+}
+
+num1 <- table(cc[num])
+num1 <- data.frame(num1)
+wordcloud2(data = num1,backgroundColor = 'black', color = 'random-light', 
+           minRotation = -pi/2, maxRotation = pi/2,  
+           rotateRatio = 1)
+```
+
+####可以發現 文字雲中出現最多的是"比賽""富邦""布拉""達欣"等等  這些都在預料之內 像是 富邦 璞園 金酒 達欣 都是球隊的名字 而達欣隊洋將布拉的大量出現則是因為近期吵很兇的技術犯規禁賽事件 當然包括 林書緯 呂政儒這些本土球星也有在當中 最後可以從 排名 首輪 以及門票等等看出 今年SBL的季後賽即將來到
+
