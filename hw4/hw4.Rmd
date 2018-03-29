@@ -23,7 +23,7 @@ library(wordcloud2)
 
 # 抓取臉書資料
 ```{r}
-token <- "EAACEdEose0cBAPJ3LQ8ZCxRMC1jMblISr2TV3CzvHxvG8I6wvGu4zvzKNJTxZAaIFelCgmdOu64UmkuF6XPebwcPivZBKzkIDHc4tiAGq8RwGKBv0WYywx34NfxtRj3e4SfFzZAToslSH59QhEzNTNl4JFSQBZB4KVzAnDWSeG55U2ye8iGcJ1zwcl4VJctSJU7OZCIZA7yiwZDZD"
+token <- "EAACEdEose0cBAAcz5MHUmNAZBzlxs6EX9xk1OhdNpVJ6TSs7D4JN5ZByeKKGZBogtbVJYiyOqmZCv6KoIsTEFpGrY4kIVFxDtAoqPZA2Gk1Uw6RQTyl1U96iZCuj99rRZCjgSXbVMyInQyQ6J3rZBSCv9la2jZAAOoAdsJOcpCtZA0LaUn1dmYQhqoLzpVBG5pRzZCX9vsvUsQrHAZDZD"
 
 page.id <- "359745807519263"
 page <- getPage(page.id, token, n = 80)
@@ -38,7 +38,7 @@ toSpace <- content_transformer(function(x, pattern) {
   return (gsub(pattern, " ", x))}
 )
 docs <- VCorpus(DataframeSource(Page))
-inspect(docs)
+#inspect(docs)
 docs<-tm_map(docs,stripWhitespace)
 docs<-tm_map(docs,removeNumbers)
 docs<-tm_map(docs,removePunctuation)
@@ -85,10 +85,29 @@ wordcloud2(data = num1,backgroundColor = 'black', color = 'random-light',
            rotateRatio = 1)
 ```
 
+##結論
+
+
 可以發現 文字雲中出現最多的是"比賽""富邦""布拉""達欣"等等  
 
 這些都在預料之內 像是 富邦 璞園 金酒 達欣 都是球隊的名字 而達欣隊洋將布拉的大量出現則是因為近期吵很兇的技術犯規禁賽事件 
 
 當然包括 林書緯 呂政儒這些本土球星也有在當中 
 最後可以從 排名 首輪 以及門票等等看出 今年SBL的季後賽即將來到
+
+## 碰到的問題
+
+
+在清理文本時 會發現 大部分的標點符號跟其他東西 就能被清理到 但最近網路開始流行的表情符號卻無法被清理 上網一開始查了很多資料 都沒辦法解決
+
+所以一開始我就小偷懶了 選擇去忽略表情符號的出現 因為 在眾多文辭中 文字雲裡的表情符號 其實出現的非常少 
+
+後來 在discord上提問後 透過其他人的解答 知道可以從表情符號的編碼 來清理表情符號
+
+而如果是用英文的話 甚至可以一次清除所有不相干的符號 
+
+這是我第一次在discord上提問 以前我都是自己埋頭找網路上的資料 因為覺得自己能夠花夠快的時間就找到解答 不過這次的問題 對我來說 困難許多 所以覺得這個平台很棒 以後遇到問題時 我會更多地做提問~
+
+
+
 
