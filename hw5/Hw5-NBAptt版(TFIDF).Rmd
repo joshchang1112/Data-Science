@@ -1,0 +1,165 @@
+---
+title: "TF-IDF 文字探勘 — 以NBA Ptt鄉民回文為例"
+author: "Josh Chang"
+date: "2018/4/5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 主題介紹
+TF-IDF 為一種文字探勘處理的工具，使用 TF 詞頻 (Term Frequency)和 IDF 逆向文件頻率 (Inverse Document Frequent)的乘積，得出權重(Weight)，讓使用的人可以在多個文件中找到頻詞高，且在各個文件中“較為獨特”的文字。
+
+
+而在這次的練習中，我參考了助教給的網站的概念，觀察ptt鄉民對於我最喜歡的球員「字母哥」Giannis Antetokounmpo，有著什麼樣的回應和評論，那就讓我們繼續往下看吧～～
+
+
+## 1.載入套件包
+```{r, warning=FALSE, message=FALSE}
+library(bitops)
+library(httr)
+library(RCurl)
+library(XML)
+library(NLP)
+library(tm)
+library(tmcn)
+library(jiebaRD)
+library(jiebaR)
+library(dplyr)
+```
+
+
+## 2.爬下所需的Ptt網站網址和標題
+
+```{r}
+data <- list()
+title <- list()
+
+#抓取從明星賽後到現在的 ptt NBA版的貼文 
+for( i in c(5674:5810)){
+  tmp <- paste(i, '.html', sep='')
+  url <- paste('www.ptt.cc/bbs/NBA/index', tmp, sep='')
+  html <- htmlParse(GET(url),encoding = "UTF-8")
+  title.list <- xpathSApply(html, "//div[@class='title']/a[@href]", xmlValue)
+  url.list <- xpathSApply(html, "//div[@class='title']/a[@href]", xmlAttrs)
+  data <- rbind(data, as.matrix(paste('www.ptt.cc', url.list, sep='')))
+  title <- rbind(title, as.matrix(title.list))
+}
+
+# data 存網址  title 存標題
+data <- unlist(data)
+title <- unlist(title)
+
+```
+
+###遇到的小問題(已解決)
+原本用getURL 結果發現url.list裡面是NULL 改用GET後就正確了
+
+## 3.找出有相對應關鍵字的標題 
+```{r}
+Giannis <- c()
+Giannis.url <- c()
+
+# 找出有關鍵字的標題並分類
+giannis1 <- grep("Giannis", title)
+giannis2 <- grep("字母", title)
+
+Giannis <- c(Giannis,title[giannis1])
+Giannis <- c(Giannis,title[giannis2])
+
+Giannis.url <- c(Giannis.url, data[giannis1])
+Giannis.url <- c(Giannis.url, data[giannis2])
+
+```
+
+## 4. 留言擷取 文本清理和建立文本矩陣 TermDocumentMatrix 
+
+```{r}
+message <- list()
+cc = worker()
+GATDF <- data.frame()
+
+#爬取每篇有字母哥或是Giannis文章的留言
+for(i in c(1:length(Giannis))){
+  html <- htmlParse(GET(Giannis.url[i]),encoding = "UTF-8")
+  message.list <- xpathSApply(html, "//div[@class='push']/span[@class='f3 push-content']", xmlValue)
+  message <- unlist(message.list)
+  
+  #文本清理
+  d.corpus <- VCorpus( VectorSource(message) )
+  d.corpus <- tm_map(d.corpus, removePunctuation)
+  d.corpus <- tm_map(d.corpus, removeNumbers)
+  d.corpus <- tm_map(d.corpus, function(word) {
+    gsub("[A-Za-z0-9]", "", word)
+  })
+  
+  #斷詞
+  abc <- data.frame(table(cc[as.character(d.corpus)]))
+  colnames(abc) <- c("word", as.character(i))
+  
+  #合併
+  if(i == 1){
+    GATDF <- abc}
+  else{
+    GATDF <- merge(GATDF, abc, by = "word", all = T)}
+}
+
+#將遺漏值設為 0
+GATDF[is.na(GATDF)] <- 0
+
+library(knitr)
+kable(head(GATDF))
+```
+
+## 5. 將已建好的 TDM 轉成 TF-IDF
+
+```{r}
+n <- length(Giannis)
+tf <- apply(as.matrix(GATDF[,2:(n+1)]), 2, sum)
+#print(tf)
+library(Matrix)
+idfCal <- function(word_doc)
+{ 
+  log2( n / nnzero(word_doc) ) 
+}
+idf <- apply(as.matrix(GATDF[,2:(n+1)]), 1, idfCal)
+
+#print(ncol(GATDF))
+doc.tfidf <- GATDF
+for(x in 1:nrow(GATDF))
+{
+  for(y in 2:ncol(GATDF))
+  {
+    doc.tfidf[x,y] <- (doc.tfidf[x,y] / tf[y-1]) * idf[x]
+  }
+}
+```
+
+## 6.列出每個文章的留言中的重要詞彙
+
+```{r}
+topwords <- subset(head(doc.tfidf[order(doc.tfidf[2], decreasing = TRUE), ]), select = c(word,`1`))
+for (i in c(3:ncol(doc.tfidf))){
+  topwords <- cbind(topwords, head(doc.tfidf[order(doc.tfidf[i], decreasing = TRUE),])[1])
+  topwords <- cbind(topwords, head(doc.tfidf[order(doc.tfidf[i], decreasing = TRUE),])[i])
+}
+kable(topwords)
+```
+
+
+#結論
+
+從得出的重要詞彙結果來看 較為有意義的分別是 第二篇的勇士 嘴綠(Draymond Green) 轉隊 第四篇的反觀 得體 人品 第五篇的 簽名 鞋
+
+
+從上述可知道 我們家字母哥 在最近的討論中 有跟勇士和其隊員有關 甚至可能有轉隊的念頭(還是鄉民的一廂情願xD)
+
+
+而第三篇的得體 人品 則知道 字母哥是個善良又有人品的好球員 想必一定是做了什麼好事情 讓鄉民連連稱讚
+
+而第七篇的 簽名 鞋 則可推測 字母哥即將推出新一款的簽名球鞋
+
+
+這次TFIDF的分析 不僅大量過濾掉了不必要的贅詞 更讓我們看到個別文章中的重要詞彙 是個非常好的分析方法 而視覺化的呈現 則會在project1中 有更清楚和更多元的圖表來做說明
