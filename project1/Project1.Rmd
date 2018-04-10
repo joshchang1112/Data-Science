@@ -1,0 +1,435 @@
+---
+title: "TF-IDF 文字探勘 — 以NBA Ptt鄉民回文為例"
+author: "Josh Chang"
+date: "2018/4/5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 主題介紹
+TF-IDF 為一種文字探勘處理的工具，使用 TF 詞頻 (Term Frequency)和 IDF 逆向文件頻率 (Inverse Document Frequent)的乘積，得出權重(Weight)，讓使用的人可以在多個文件中找到頻詞高，且在各個文件中“較為獨特”的文字。
+
+而在這次的練習中，我參考了助教給的網站的概念，觀察ptt鄉民對於今年三位MVP呼聲最高球員，Curry, Lebron, Harden，
+
+看看他們分別被討論的關注度和時間點，以及鄉民們對他們有著什麼樣的回應和評論，那就讓我們繼續往下看吧～～
+
+
+## 1.載入套件包
+```{r, warning=FALSE, message=FALSE}
+library(bitops)
+library(httr)
+library(RCurl)
+library(XML)
+library(NLP)
+library(tm)
+library(tmcn)
+library(jiebaRD)
+library(jiebaR)
+library(dplyr)
+```
+
+
+## 2.爬下所需的Ptt網站網址和標題
+
+```{r}
+data <- list()
+title <- list()
+date <- list()
+
+#抓取三月ptt NBA版的貼文 
+for( i in c(5702:5794)){
+  tmp <- paste(i, '.html', sep='')
+  url <- paste('www.ptt.cc/bbs/NBA/index', tmp, sep='')
+  html <- htmlParse(GET(url),encoding = "UTF-8")
+  title.list <- xpathSApply(html, "//div[@class='title']/a[@href]", xmlValue)
+  url.list <- xpathSApply(html, "//div[@class='title']/a[@href]", xmlAttrs)
+  date.list <- xpathSApply(html, "//div[@class='meta']/div[@class='date']", xmlValue)
+  data <- rbind(data, as.matrix(paste('www.ptt.cc', url.list, sep='')))
+  title <- rbind(title, as.matrix(title.list))
+  date <- rbind(date, as.matrix(date.list))
+}
+
+# data 存網址  title 存標題 #date 存時間
+data <- unlist(data)
+title <- unlist(title)
+date <- unlist(date)
+```
+
+###遇到的小問題(已解決)
+原本用getURL 結果發現url.list裡面是NULL 改用GET後就正確了
+
+## 3.找出有相對應關鍵字的標題 
+```{r}
+Lebron <- c()
+Lebron.url <- c()
+Lebron.date <- c()
+
+# 找出有關鍵字的標題並分類
+lebron1 <- grep("James", title)
+lebron2 <- grep("LBJ", title)
+lebron3 <- grep("姆斯", title)
+
+Lebron <- c(Lebron,title[lebron1])
+Lebron <- c(Lebron,title[lebron2])
+Lebron <- c(Lebron,title[lebron3])
+
+Lebron.url <- c(Lebron.url, data[lebron1])
+Lebron.url <- c(Lebron.url, data[lebron2])
+Lebron.url <- c(Lebron.url, data[lebron3])
+
+Lebron.date <- c(Lebron.date, date[lebron1])
+Lebron.date <- c(Lebron.date, date[lebron2])
+Lebron.date <- c(Lebron.date, date[lebron3])
+
+Curry <- c()
+Curry.url <- c()
+Curry.date <- c()
+
+# 找出有關鍵字的標題並分類
+curry1 <- grep("Curry", title)
+curry2 <- grep("柯瑞", title)
+curry3 <- grep("咖哩", title)
+
+Curry <- c(Curry,title[curry1])
+Curry <- c(Curry,title[curry2])
+Curry <- c(Curry,title[curry3])
+
+Curry.url <- c(Curry.url, data[curry1])
+Curry.url <- c(Curry.url, data[curry2])
+Curry.url <- c(Curry.url, data[curry3])
+
+Curry.date <- c(Curry.date, date[curry1])
+Curry.date <- c(Curry.date, date[curry2])
+Curry.date <- c(Curry.date, date[curry3])
+
+Harden <- c()
+Harden.url <- c()
+Harden.date <- c()
+
+# 找出有關鍵字的標題並分類
+harden1 <- grep("Harden", title)
+harden2 <- grep("哈登", title)
+
+Harden <- c(Harden,title[harden1])
+Harden <- c(Harden,title[harden2])
+
+Harden.url <- c(Harden.url, data[harden1])
+Harden.url <- c(Harden.url, data[harden2])
+
+Harden.date <- c(Harden.date, date[harden1])
+Harden.date <- c(Harden.date, date[harden2])
+
+```
+
+## 4. 留言擷取 分類 文本清理和建立文本矩陣 TermDocumentMatrix 
+
+```{r}
+message <- list()
+cc = worker()
+LBJTDF <- data.frame()
+SCTDF <- data.frame()
+JHTDF <- data.frame()
+player <- c()
+postdate <- c()
+hot <- c()
+
+#爬取每篇有姆斯 LBJ 或是James 文章的留言
+for(i in c(1:length(Lebron))){
+  html <- htmlParse(GET(Lebron.url[i]),encoding = "UTF-8")
+  message.list <- xpathSApply(html, "//div[@class='push']/span[@class='f3 push-content']", xmlValue)
+  message <- unlist(message.list)
+  
+  #日期分類
+  player <- c(player,"LBJ")
+  if(grepl("3/0",Lebron.date[i])== TRUE){
+    postdate <- c(postdate, "3/01~3/09") }
+  else if(grepl("3/1",Lebron.date[i])== TRUE){
+    postdate <- c(postdate, "3/10~3/19")}
+  else if(grepl("3/2",Lebron.date[i])== TRUE){
+    postdate <- c(postdate, "3/20~3/29")}
+  else if(grepl("3/3",Lebron.date[i])== TRUE){
+    postdate <- c(postdate, "3/30~3/31")}
+ 
+  
+   #人氣分類
+  if(length(message) > 100){
+    hot <- c(hot, "爆")}
+  else if(length(message) > 75){
+    hot <- c(hot, "熱門")}
+  else if(length(message) > 50){
+    hot <- c(hot, "普")}
+  else{
+    hot <- c(hot, "冷") }
+  
+  
+  
+  #文本清理
+  d.corpus <- VCorpus( VectorSource(message) )
+  d.corpus <- tm_map(d.corpus, removePunctuation)
+  d.corpus <- tm_map(d.corpus, removeNumbers)
+  d.corpus <- tm_map(d.corpus, function(word) {
+    gsub("[A-Za-z0-9]", "", word)
+  })
+  
+  #斷詞
+  abc <- data.frame(table(cc[as.character(d.corpus)]))
+  colnames(abc) <- c("word", as.character(i))
+  
+  #合併
+  if(i == 1){
+    LBJTDF <- abc}
+  else{
+    LBJTDF <- merge(LBJTDF, abc, by = "word", all = T)}
+}
+
+#爬取每篇有柯瑞 咖哩 或是Curry 文章的留言
+for(i in c(1:length(Curry))){
+  html <- htmlParse(GET(Curry.url[i]),encoding = "UTF-8")
+  message.list <- xpathSApply(html, "//div[@class='push']/span[@class='f3 push-content']", xmlValue)
+  message <- unlist(message.list)
+  
+  #日期分類
+  player <- c(player,"Curry")
+  if(grepl("3/0",Curry.date[i])== TRUE){
+    postdate <- c(postdate, "3/01~3/09") }
+  else if(grepl("3/1",Curry.date[i])== TRUE){
+    postdate <- c(postdate, "3/10~3/19")}
+  else if(grepl("3/2",Curry.date[i])== TRUE){
+    postdate <- c(postdate, "3/20~3/29")}
+  else if(grepl("3/3",Curry.date[i])== TRUE){
+    postdate <- c(postdate, "3/30~3/31")}
+
+ 
+  #人氣分類
+  if(length(message) > 100){
+    hot <- c(hot, "爆")}
+  else if(length(message) > 75){
+    hot <- c(hot, "熱門")}
+  else if(length(message) > 50){
+    hot <- c(hot, "普")}
+  else{
+    hot <- c(hot, "冷") }
+  
+   #文本清理
+  d.corpus <- VCorpus( VectorSource(message) )
+  d.corpus <- tm_map(d.corpus, removePunctuation)
+  d.corpus <- tm_map(d.corpus, removeNumbers)
+  d.corpus <- tm_map(d.corpus, function(word) {
+    gsub("[A-Za-z0-9]", "", word)
+  })
+  
+  #斷詞
+  abc <- data.frame(table(cc[as.character(d.corpus)]))
+  colnames(abc) <- c("word", as.character(i))
+  
+  #合併
+  if(i == 1){
+    SCTDF <- abc}
+  else{
+    SCTDF <- merge(SCTDF, abc, by = "word", all = T)}
+}
+
+#爬取每篇有哈登或是Harden文章的留言
+for(i in c(1:length(Harden))){
+  html <- htmlParse(GET(Harden.url[i]),encoding = "UTF-8")
+  message.list <- xpathSApply(html, "//div[@class='push']/span[@class='f3 push-content']", xmlValue)
+  message <- unlist(message.list)
+  
+  #日期分類
+  player <- c(player,"Harden")
+  if(grepl("3/0",Harden.date[i])== TRUE){
+    postdate <- c(postdate, "3/01~3/09") }
+  else if(grepl("3/1",Harden.date[i])== TRUE){
+    postdate <- c(postdate, "3/10~3/19")}
+  else if(grepl("3/2",Harden.date[i])== TRUE){
+    postdate <- c(postdate, "3/20~3/29")}
+  else if(grepl("3/3",Harden.date[i])== TRUE){
+    postdate <- c(postdate, "3/30~3/31")}
+  
+  #人氣分類
+  if(length(message) > 100){
+    hot <- c(hot, "爆")}
+  else if(length(message) > 75){
+    hot <- c(hot, "熱門")}
+  else if(length(message) > 50){
+    hot <- c(hot, "普")}
+  else{
+    hot <- c(hot, "冷") }
+  
+  #文本清理
+  d.corpus <- VCorpus( VectorSource(message) )
+  d.corpus <- tm_map(d.corpus, removePunctuation)
+  d.corpus <- tm_map(d.corpus, removeNumbers)
+  d.corpus <- tm_map(d.corpus, function(word) {
+    gsub("[A-Za-z0-9]", "", word)
+  })
+  
+  #斷詞
+  abc <- data.frame(table(cc[as.character(d.corpus)]))
+  colnames(abc) <- c("word", as.character(i))
+  
+  #合併
+  if(i == 1){
+    JHTDF <- abc}
+  else{
+    JHTDF <- merge(JHTDF, abc, by = "word", all = T)}
+}
+
+
+
+#將遺漏值設為 0
+LBJTDF[is.na(LBJTDF)] <- 0
+JHTDF[is.na(JHTDF)] <- 0
+SCTDF[is.na(SCTDF)] <- 0
+
+library(knitr)
+kable(head(LBJTDF))
+kable(head(SCTDF))
+kable(head(JHTDF))
+
+```
+
+## 5. 將已建好的 TDM 轉成 TF-IDF
+
+```{r}
+n <- length(Lebron)
+tf1 <- apply(as.matrix(LBJTDF[,2:(n+1)]), 2, sum)
+library(Matrix)
+idfCal1 <- function(word_doc)
+{ 
+  log2( n / nnzero(word_doc) ) 
+}
+idf1 <- apply(as.matrix(LBJTDF[,2:(n+1)]), 1, idfCal1)
+
+doc1.tfidf <- LBJTDF
+
+for(x in 1:nrow(LBJTDF))
+{
+  for(y in 2:ncol(LBJTDF))
+  {
+    doc1.tfidf[x,y] <- (doc1.tfidf[x,y] / tf1[y-1]) * idf1[x]
+  }
+}
+
+n <- length(Curry)
+tf2 <- apply(as.matrix(SCTDF[,2:(n+1)]), 2, sum)
+
+idfCal2 <- function(word_doc)
+{ 
+  log2( n / nnzero(word_doc) ) 
+}
+idf2 <- apply(as.matrix(SCTDF[,2:(n+1)]), 1, idfCal2)
+
+doc2.tfidf <- SCTDF
+
+for(x in 1:nrow(SCTDF))
+{
+  for(y in 2:ncol(SCTDF))
+  {
+    doc2.tfidf[x,y] <- (doc2.tfidf[x,y] / tf2[y-1]) * idf2[x]
+  }
+}
+
+n <- length(Harden)
+tf3 <- apply(as.matrix(JHTDF[,2:(n+1)]), 2, sum)
+idfCal3 <- function(word_doc)
+{ 
+  log2( n / nnzero(word_doc) ) 
+}
+idf3 <- apply(as.matrix(JHTDF[,2:(n+1)]), 1, idfCal3)
+
+doc3.tfidf <- JHTDF
+
+for(x in 1:nrow(JHTDF))
+{
+  for(y in 2:ncol(JHTDF))
+  {
+    doc3.tfidf[x,y] <- (doc3.tfidf[x,y] / tf3[y-1]) * idf3[x]
+  }
+}
+```
+
+## 6.列出文章留言中的最重要詞彙
+
+
+### 6-1 Lebron James 文章重要詞彙
+
+```{r}
+topwords <- subset(head(doc1.tfidf[order(doc1.tfidf[2], decreasing = TRUE), ]), select = c(word))
+for (i in c(3:ncol(doc1.tfidf))){
+  topwords <- cbind(topwords, head(doc1.tfidf[order(doc1.tfidf[i], decreasing = TRUE),])[1])
+}
+
+
+AllTop = as.data.frame( table(as.matrix(topwords)) )
+AllTop = AllTop[order(AllTop$Freq, decreasing = TRUE),]
+
+kable(head(AllTop))
+
+```
+
+
+### 6-2 Stephen Curry 文章重要詞彙
+
+```{r}
+topwords <- subset(head(doc2.tfidf[order(doc2.tfidf[2], decreasing = TRUE), ]), select = c(word))
+for (i in c(3:ncol(doc2.tfidf))){
+  topwords <- cbind(topwords, head(doc2.tfidf[order(doc2.tfidf[i], decreasing = TRUE),])[1])
+}
+
+AllTop = as.data.frame( table(as.matrix(topwords)) )
+AllTop = AllTop[order(AllTop$Freq, decreasing = TRUE),]
+
+kable(head(AllTop))
+```
+
+
+### 6-3 James Harden 文章重要詞彙
+
+```{r}
+topwords <- subset(head(doc3.tfidf[order(doc3.tfidf[2], decreasing = TRUE), ]), select = c(word))
+for (i in c(3:ncol(doc3.tfidf))){
+  topwords <- cbind(topwords, head(doc3.tfidf[order(doc3.tfidf[i], decreasing = TRUE),])[1])
+}
+
+AllTop = as.data.frame( table(as.matrix(topwords)) )
+AllTop = AllTop[order(AllTop$Freq, decreasing = TRUE),]
+
+kable(head(AllTop))
+
+
+```
+
+## 7. 發文日期和發文量
+
+```{r}
+library(ggplot2)
+df1 <- data.frame(player,postdate,hot)
+
+names(df1) <- c("Player", "Date", "Popularity")
+ggplot(df1, aes(Date,fill = Player)) + geom_bar(position="dodge")
+
+```
+
+## 8. 球員被討論的熱門程度
+
+```{r}
+
+ggplot(df1, aes(Player,fill = Popularity)) + geom_bar(position="dodge") + 
+  theme(text=element_text(family="黑體-繁 中黑", size=14))
+
+```
+
+
+## 9. 結論
+
+這次TFIDF的分析 讓我看到 Lebron Harden Curry這三位現今NBA頂級球員 在台灣最大的論壇ptt中 鄉民們最常以甚麼詞語來評論他們 也可以從這些詞語中看出 
+最近他們身處什麼議題 和最近的表現如何
+
+而在爬蟲的過程中 我也將有關球員文章的留言數 知道這三位好手的人氣(很明顯他們都是非常紅xD)
+
+硬要說 TFIDF 有什麼缺點 可能是在當資料過多(像此次處理一個月的文章)時 繁複的計算會導致時間偏慢 但其演算法去除贅字的能力 仍讓我大開眼界 希望將來能有更多的時間 對這個演算法有更深入的研究！
+
