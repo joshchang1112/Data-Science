@@ -154,15 +154,14 @@ for(i in c(1:length(Lebron))){
     postdate <- c(postdate, "3/30~3/31")}
  
   
-   #人氣分類
   if(length(message) > 100){
-    hot <- c(hot, "爆")}
+    hot <- c(hot, "Boom!")}
   else if(length(message) > 75){
-    hot <- c(hot, "熱門")}
+    hot <- c(hot, "Hot")}
   else if(length(message) > 50){
-    hot <- c(hot, "普")}
+    hot <- c(hot, "Soso")}
   else{
-    hot <- c(hot, "冷") }
+    hot <- c(hot, "Cold") }
   
   
   
@@ -205,13 +204,13 @@ for(i in c(1:length(Curry))){
  
   #人氣分類
   if(length(message) > 100){
-    hot <- c(hot, "爆")}
+    hot <- c(hot, "Boom!")}
   else if(length(message) > 75){
-    hot <- c(hot, "熱門")}
+    hot <- c(hot, "Hot")}
   else if(length(message) > 50){
-    hot <- c(hot, "普")}
+    hot <- c(hot, "Soso")}
   else{
-    hot <- c(hot, "冷") }
+    hot <- c(hot, "Cold") }
   
    #文本清理
   d.corpus <- VCorpus( VectorSource(message) )
@@ -251,13 +250,13 @@ for(i in c(1:length(Harden))){
   
   #人氣分類
   if(length(message) > 100){
-    hot <- c(hot, "爆")}
+    hot <- c(hot, "Boom!")}
   else if(length(message) > 75){
-    hot <- c(hot, "熱門")}
+    hot <- c(hot, "Hot")}
   else if(length(message) > 50){
-    hot <- c(hot, "普")}
+    hot <- c(hot, "Soso")}
   else{
-    hot <- c(hot, "冷") }
+    hot <- c(hot, "Cold") }
   
   #文本清理
   d.corpus <- VCorpus( VectorSource(message) )
@@ -418,8 +417,7 @@ ggplot(df1, aes(Date,fill = Player)) + geom_bar(position="dodge")
 
 ```{r}
 
-ggplot(df1, aes(Player,fill = Popularity)) + geom_bar(position="dodge") + 
-  theme(text=element_text(family="黑體-繁 中黑", size=14))
+ggplot(df1, aes(Player,fill = Popularity)) + geom_bar(position="dodge") 
 
 ```
 
