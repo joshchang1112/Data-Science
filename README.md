@@ -100,6 +100,6 @@
 
 完成 project1 (4/10)
 
-https://github.com/joshchang1112/cs-x-programming/blob/master/project1/Project1.html
+https://joshchang1112.github.io/cs-x-programming/project1/Project1.html
   
 
