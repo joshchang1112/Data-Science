@@ -106,3 +106,13 @@ https://joshchang1112.github.io/cs-x-programming/hw5/Hw5-NBAptt版_TFIDF_.html
 https://joshchang1112.github.io/cs-x-programming/project1/Project1.html
   
 
+## Week 6
+
+放假zzzzzzzzz
+
+
+
+## Week 7
+
+Machine Learning初探 (4/19 ~ 4/21)
+
