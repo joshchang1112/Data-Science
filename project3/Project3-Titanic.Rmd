@@ -1,0 +1,514 @@
+---
+title: "Project3 - Titanic"
+author: "Josh Chang"
+date: "2018/4/30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.簡介 
+
+這次的project，我們利用分析各種變數(ex:船票等級 性別 年齡等等)和存活率(survived)的關係，來預測其他在survived欄位中缺少的乘客，最後是否生還。在分析過程當中，運用到了非常多的圖表來說明和呈現我想表達的東西，後面的預測過程，我使用Random Forest 當作模型，來檢測我們預測的準確率為何。
+
+
+# 2.分析過程
+
+## 2.1 函數制定和讀取資料
+
+```{r }
+require(ggplot2)
+library(ggplot2)
+library(dplyr)
+# 結合多張圖的函示(擷取自網路)
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) { 
+  library(grid) 
+  
+  # Make a list from the ... arguments and plotlist 
+  plots <- c(list(...), plotlist) 
+  
+  numPlots = length(plots) 
+  
+  # If layout is NULL, then use 'cols' to determine layout 
+  if (is.null(layout)) { 
+    # Make the panel 
+    # ncol: Number of columns of plots 
+    # nrow: Number of rows needed, calculated from # of cols 
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)), 
+                     ncol = cols, nrow = ceiling(numPlots/cols)) 
+  } 
+  
+  if (numPlots==1) { 
+    print(plots[[1]]) 
+    
+  } else { 
+    # Set up the page 
+    grid.newpage() 
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout)))) 
+    
+    # Make each plot, in the correct location 
+    for (i in 1:numPlots) { 
+      # Get the i,j matrix positions of the regions that contain this subplot 
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE)) 
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row, 
+                                      layout.pos.col = matchidx$col)) 
+    } 
+  } 
+}  
+
+# 輸入資料
+Titanic_data = read.csv("titanicTrain.csv")
+Titanic_train = read.csv("titanicQuestion.csv")
+
+
+# 將後面309筆空資料先移除
+Titanic <- subset(Titanic_data, sex != "")
+str(Titanic)
+
+```
+
+## 2.2 變數關係分析
+
+### 2.2.1 乘客基本資料
+```{r}
+Titanic$pclass = factor(Titanic$pclass)
+Titanic$survived = factor(Titanic$survived)
+
+Titanic_all <- rbind(Titanic,Titanic_train)
+# 首先 讓我們先來看看這艘鐵達尼號上乘客最基本的資料 
+
+Titanic_all$age <- as.numeric(Titanic_all$age)
+# age histogram plot
+p1 <- ggplot(data = Titanic_all) + 
+  geom_histogram(aes(x = age),fill = "red",color = "black",
+                  na.rm = TRUE) +
+  ylab("Number") +
+  ggtitle("Age Distribution")
+
+# Gender Pie chart
+
+p2 <- ggplot(data = Titanic_all) + 
+  geom_bar(aes(x = factor(1),fill = sex),
+           stat = "count", na.rm = TRUE) +
+  xlab("") + ylab("") + ggtitle("Gender Distribution") + 
+  # 再沿著Y，轉軸成圓餅圖
+  coord_polar("y", start=0)
+
+# Survived Pie chart
+
+p3 <- ggplot(data = Titanic) + 
+  geom_bar(aes(x = factor(1),fill = survived),
+           stat = "count", na.rm = TRUE) +
+  xlab("") + ylab("") + ggtitle("Survived Distribution") + 
+  # 再沿著Y，轉軸成圓餅圖
+  coord_polar("y", start=0)
+
+# Pclass Pie chart
+
+p4 <- ggplot(data = Titanic_all) + 
+  geom_bar(aes(x = factor(1),fill = pclass),
+           stat = "count", na.rm = TRUE) +
+  xlab("") + ylab("") + ggtitle("Class Distribution") + 
+  # 再沿著Y，轉軸成圓餅圖
+  coord_polar("y", start=0)
+
+#將四張圖合併輸出
+multiplot(p1, p2, p3, p4,cols=2)
+
+```
+
+我們在分析基本資料時 是使用兩筆資料合起來 總計1309位乘客的資料 而存活率則是只使用1000位乘客的資料 因為另外309位的存活率目前未知 因此在後面的討論 大部分也是先行使用只有1000位乘客的 titanicTrain.csv 提供的資料
+
+上面四個圖可以發現 乘客的年齡大約集中在20 ~ 40歲 而男女比接近3:2
+
+而當中乘客的存活率大約為2:3 座艙的等級分布則是 25 %, 20 % 和 55 % (由好至壞) 
+
+### 2.2.2 性別存活率
+
+```{r}
+# 接下來 我們就要來探討 各項數據和存活率的關係
+# 首先 我們先來看看不同性別的存活率
+ggplot(data = Titanic) + 
+  geom_bar(aes(x = sex,fill = survived),color = "black", position="dodge") +
+  geom_label(stat = "count",aes(x = sex,fill = survived,label = ..count..),
+             size=5) +
+  theme_grey(base_size = 15) +
+  ggtitle("Gender-Survived Probability")
+
+```
+
+可以發現男性的存活率大約只有20% 而女性則有約80%的存活率
+
+由此可知 當時發生危險 可能都是先將救生艇的位置讓給了女性
+
+### 2.2.3 船票等級與存活率的關係
+
+在pclass中 數字越小 代表等級越高(類似我們頭等艙 經濟艙的概念)
+
+```{r}
+ggplot(data = Titanic) + 
+  geom_bar(aes(x = pclass,fill = survived),color = "black", position="dodge") +
+  geom_label(stat = "count",aes(x = pclass,fill = survived,label = ..count..),
+             size=5) +
+  theme_grey(base_size = 15) +
+  ggtitle("Pclass-Survived Probability") 
+```
+
+
+可以發現 坐在1號船票乘客的存活率超過了60% 而2號船票 存活率大概在40~50%左右
+3號船票就比較慘了 僅有大約25%的存活率
+有此也可知 坐在較高等級傳票的乘客 也就是比較有錢的乘客 擁有了較多的機會逃生
+
+### 2.2.4 性別 船票等級 存活率三者關係
+```{r}
+Titanic_men <- subset(Titanic,sex == "male")
+Titanic_women <- subset(Titanic,sex == "female")
+
+p5 <- ggplot(data = Titanic_men) + 
+  geom_bar(aes(x = pclass,fill = survived),color = "black", position="dodge") +
+  geom_label(stat = "count",aes(x = pclass,fill = survived,label = ..count..),
+             size=5) +
+  theme_grey(base_size = 10) +
+  ggtitle("Pclass-Survived Probability (Men)") 
+
+p6 <- ggplot(data = Titanic_women) + 
+  geom_bar(aes(x = pclass,fill = survived),color = "black", position="dodge") +
+  geom_label(stat = "count",aes(x = pclass,fill = survived,label = ..count..),
+             size=5) +
+  theme_grey(base_size = 10) +
+  scale_fill_manual(values=c('green','orange'))+ #颜色
+  ggtitle("Pclass-Survived Probability (Women)") 
+
+multiplot(p5,p6,cols=2)
+```
+
+
+
+這邊發現一件事情 男生存活率普遍都不高 但 class之間沒有太大差異 然而
+女生在 class 1 and 2 中 存活率都超過 90 % 但在 class 3 中卻只有不到 50 %
+
+這邊大概可以很清楚的知道 最後獲救的人 大多是 較有錢的女性
+
+
+
+### 2.2.5 港口跟存活率的關係 
+
+```{r}
+Titanic$embarked = as.character(Titanic$embarked)
+a <- c()
+for(i in c(1:1000)){
+  if(Titanic$embarked[i] == ""){
+    Titanic$embarked[i] = NA
+    a <- c(a,i)
+  }
+}
+
+p7 <- ggplot(data = Titanic) + 
+  geom_bar(aes(x = factor(1),fill = embarked),
+           stat = "count", na.rm = TRUE) +
+  xlab("") + ylab("") + ggtitle("Embarked Distribution") + 
+  # 再沿著Y，轉軸成圓餅圖
+  coord_polar("y", start=0)
+  
+p8 <- ggplot(data = Titanic) + 
+  geom_bar(aes(x = embarked,fill = survived),color = "black", position="dodge", na.rm = TRUE) +
+  geom_label(stat = "count",aes(x = embarked,fill = survived,label = ..count..),
+             size=5) +
+  theme_grey(base_size = 15) +
+  scale_fill_manual(values=c('green','orange'))+ #颜色
+  ggtitle("Embarked-Survived Probability") 
+
+multiplot(p7,p8,cols=2)
+```
+
+這邊看到 大約有七成的人從港口S搭船 但存活率大約只有四成
+
+而從C港口搭船的乘客存活率最高 超過了五成 而 Q港口 搭乘人數和存活率皆為最低
+
+### 2.2.6 上岸港口與船票等級的關係
+
+```{r}
+
+ggplot(data = Titanic) + 
+  geom_bar(aes(x = embarked,fill = pclass),color = "black", position="dodge") +
+  theme_grey(base_size = 15) +
+  ggtitle("Embarked-Pclass Distribution") 
+
+Titanic$embarked[a] <- 'C'
+
+```
+
+我們可看出不同港口乘客有不同的經濟狀況。從C港口上船的目的主要可能為旅遊，因此多購買等級最高的P1船票（也使得C港口上船的有較高的存活率），來自Q港口的乘客則有極大的比例是購買最低等級的P3船票，目的可能為工作或移民。
+
+也可以從中看到缺乏港口乘客的pclass = 1 因此 我們在後面也會將合併資料中的港口填補為C
+
+### 2.2.7 船票價錢跟存活率的關係
+
+```{r}
+Titanic_fare100 <- subset(Titanic,fare <= 100)
+
+# Fare histogram plot
+p9 <- ggplot(data = Titanic) + 
+  geom_histogram(aes(x = fare),fill = "Orange",color = "black",bins = 30, na.rm = TRUE) +
+  ylab("Number") + ggtitle("Fare Distribution")
+
+
+p10 <- ggplot(data = Titanic_fare100) + 
+  geom_histogram(aes(x = fare),fill = "Green",color = "black",bins = 30, na.rm = TRUE) +
+  ylab("Number") + ggtitle("Fare Distribution below 100")
+
+p11 <- ggplot(data = Titanic) + 
+  geom_histogram(aes(x = fare, y=..density..),fill = "White",color = "black",bins = 30, na.rm = TRUE) +
+  ylab("Density") + ggtitle("Fare Distribution") + 
+  geom_density(aes(x = fare),alpha=.2, fill="#FF6666")
+
+
+p12 <- ggplot(data = Titanic_fare100) + 
+  geom_histogram(aes(x = fare, y=..density..),fill = "Light Blue",color = "black",bins = 30, na.rm = TRUE) +
+  ylab("Density") + ggtitle("Fare Distribution below 100") + 
+  geom_density(aes(x = fare),alpha=.2, fill="#FF6666")
+
+multiplot(p9,p10,p11,p12,cols=2)
+```
+
+
+
+首先這四張是 船票的票價直方圖 和 直方圖跟機率密度結合的圖
+
+可以看到大部分的票價是在 100 元以內 因此 另外做了一份100元以內的票價分佈圖
+
+最終發現 票價最多分佈在 25 元以內
+
+```{r}
+p13 <- ggplot(Titanic, aes(x=fare,color = survived,fill = survived)) + 
+  geom_density(aes(x = fare),alpha=.3) +
+  ggtitle("Fare-Survived Density Distribution")
+
+p14 <- ggplot(Titanic_fare100, aes(x=fare,color = survived,fill = survived)) + 
+  geom_density(aes(x = fare),alpha=.3) + 
+  ggtitle("Fare-Survived Density Distribution below 100") +
+  theme_grey(base_size = 10)
+
+multiplot(p13,p14,cols=2)
+```
+
+
+從這兩張機率密度圖可發現 在票價低於25元的乘客中 存活率相較於其他價錢低很多
+
+### 2.2.8 船票錢 年齡 和生存率的探討
+
+```{r}
+ggplot(data = Titanic) + 
+  geom_point(aes(x = age,y = fare, colour = survived, size = pclass)) + 
+  ggtitle("Fare Age Pclass Survived Distribution") +
+  theme_grey(base_size = 10) 
+```
+
+從這張多變數的點圖中 我們看到生存率和船票的價錢以及船票的等級都非常有關聯 越便宜的票 通常也帶表 他船票的等級較低 不過這張圖也看出 年齡跟船票等級 船票價錢較無明顯的關聯
+
+### 2.2.9 家人和存活率之間的關係 
+
+sibsp為在船上同為兄弟姐妹或配偶的數目 parch為在船上同為家族的父母及小孩的數目 
+由於我初估判斷兩者的影響力可能差不多 所以
+我們在當中新增一個欄位名為 family(家人數) 來探討跟存活率之間的關係
+
+```{r}
+Titanic$family <- Titanic$sibsp + Titanic$parch
+Titanic_all$family <- Titanic_all$sibsp + Titanic_all$parch
+
+ggplot(data = Titanic) + 
+  geom_bar(aes(x = family,fill = survived),color = "black", position="dodge") +
+  theme_grey(base_size = 15) +
+  scale_fill_manual(values=c('green','orange'))+ #颜色
+  ggtitle("Family-Survived Probability") 
+
+filter(Titanic) %>%
+  group_by(family) %>%
+  summarise(Survived = sum(as.numeric(survived) - 1) / length(survived) )
+
+```
+
+發現有家人一起搭船的乘客 存活的比率明顯比獨自一人搭船的乘客高
+
+存活率最高的分別是 有3和5位家人的乘客
+
+### 2.2.10 探討稱謂和存活率的關係 以及將較少出現的稱謂合併
+
+```{r}
+b <- list()
+call <- c()
+Titanic_all$name <- as.character(Titanic_all$name)
+
+for (i in c(1:1309)){
+  b[[i]] <- strsplit(Titanic_all$name[i], "[,.]") 
+}
+b[[5]][[1]][2]
+for(i in c(1:1309)){
+  Titanic_all$Title[i] <- b[[i]][[1]][2]
+}
+
+filter(Titanic_all) %>%
+  group_by(Title) %>%
+  summarise(Num = length(Title), Sex = (sum(as.numeric(sex) - 2) ) / length(sex), Survived = sum(as.numeric(survived)) / length(survived), Age = sum(age,na.rm=TRUE) / length(age))
+
+
+for(i in c(1:1309)){
+  if(Titanic_all$Title[i] == " Mr" &&  is.na(Titanic_all$age[i])){
+    Titanic_all$Title[i] <- "Men"}
+  else if(Titanic_all$Title[i] == " Mr"  && Titanic_all$age[i] <= 40){
+    Titanic_all$Title[i] <- "Young Men"}
+  else if(Titanic_all$Title[i] == " Mr"  && Titanic_all$age[i] > 40){
+    Titanic_all$Title[i] <- "Old Men"}
+  if(Titanic_all$Title[i] == " Capt" || Titanic_all$Title[i] == " Col" || Titanic_all$Title[i] == " Major" || Titanic_all$Title[i] == " Major" || Titanic_all$Title[i] == " Sir"){
+    Titanic_all$Title[i] <- "Old Men"}
+  if(Titanic_all$Title[i] == " Don" || Titanic_all$Title[i] == " Rev" || Titanic_all$Title[i] == " Jonkheer"){
+    Titanic_all$Title[i] <- "Young Men"}
+  if(Titanic_all$Title[i] == " Dona" || Titanic_all$Title[i] == " Lady" || Titanic_all$Title[i] == " Ms" || Titanic_all$Title[i] == " the Countess" || Titanic_all$Title[i] == " Mrs"){
+    Titanic_all$Title[i] <- "Mrs"}
+  if(Titanic_all$Title[i] == " Mlle" || Titanic_all$Title[i] == " Mme" || Titanic_all$Title[i] == " Miss"){
+    Titanic_all$Title[i] <- " Miss"}
+}
+
+filter(Titanic_all) %>%
+  group_by(Title) %>%
+  summarise(Num = length(Title), Sex = (sum(as.numeric(sex) - 2) ) / length(sex), Survived = sum(as.numeric(survived) ) / length(survived), Age = sum(age,na.rm=TRUE) / length(age))
+```
+
+從稱謂的數據可以證實我們前面的討論 男生的存活率是遠低於女性的 但值得注意的是 稱謂為Master 從年齡和性別可以得知 其為 男生的幼童 而他們的存活率超過了60% 從中也可以推測 當時遇到危險時 小孩是擁有優先坐上逃生船的權利
+
+# 3. 特徵工程和訓練
+
+## 3.1 補齊缺失值
+
+
+### 3.1.1 港口
+
+從前面2.2.6 我們看到缺乏港口乘客的pclass = 1 而由於跟其他港口相比
+從C港口中出發的pclass = 1的乘客比率最高 因此 我們將他的港口填補為C
+
+```{r}
+Titanic_all$embarked[a] <- 'C'
+```
+
+### 3.1.2 票價
+
+```{r}
+sum(is.na(Titanic_all$fare))
+for(i in c(1:1309)){
+  if(is.na(Titanic_all$fare[i]) == TRUE){
+    t <- i}
+}
+Titanic_all[t,]
+ 
+filter(Titanic_all) %>%
+  group_by(embarked) %>%
+  summarise(Num = length(name), Sex = (sum(as.numeric(sex) - 2) ) / length(sex), Age = sum(age,na.rm=TRUE) / length(age),Fare = median(fare,na.rm = T))
+
+filter(Titanic_all) %>%
+  group_by(pclass) %>%
+  summarise(Num = length(name), Sex = (sum(as.numeric(sex) - 2) ) / length(sex), Age = sum(age,na.rm=TRUE) / length(age),Fare = median(fare,na.rm = T))
+
+Titanic_all$fare[t] = 10.5
+```
+
+我們首先先發現 因為fare只有一筆資料為NA 所以我們找到其是第1226筆 並且觀察這位乘客的資料 發現他是一個年老的男性 且他的船票等級為第3等 出發港口位於 S 港
+
+但由於我們在2.2.8的分析中發現 年齡對於船票價錢的影響性不高
+
+於是我們只來查看港口和船票等級的影響 發現 船票等級為3的票價中位數為8.05 而由S港出發的票價中位數為13.0 因為 這兩項數據代表的乘客都很多 我就相信這樣的資訊是可靠且平等  因此我將這兩個值取平均 得到值為 10.5
+
+
+### 3.1.3 年齡
+```{r}
+
+sum(is.na(Titanic_all$fare))
+
+```
+
+這邊看到年齡的遺失比數高達263筆 但因為年齡是個相當重要的數據 我們非常需要他 因此
+我這邊選擇使用Mice包 來填補遺漏的數據
+
+```{r, message=FALSE}
+require(missForest)
+require(mice) 
+factor_vars <- c('pclass','sex','age','embarked','family',"Title") 
+Titanic_all[factor_vars] <- lapply(Titanic_all[factor_vars],function(x) as.factor(x)) 
+# 設置隨機種子 
+set.seed(129) 
+# 執行多重插補法，剔除一些沒什麼用的變量: 
+mice_mod <- mice(Titanic_all[, !names(Titanic_all) %in% c('name','ticket','cabin','survived','boat','body','home.dest')], method='rf') 
+
+mice_output <- complete(mice_mod)
+mice_output$age <- as.numeric(mice_output$age)
+Titanic_all$age <- as.numeric(Titanic_all$age)
+
+p16 <- ggplot(data = mice_output) + 
+  geom_histogram(aes(x = age),fill = "green",color = "black",
+                 bins = 20, na.rm = TRUE) +
+  ylab("Number") +
+  ggtitle("Age Distribution Without NA")
+
+p15 <- ggplot(data = Titanic_all) + 
+  geom_histogram(aes(x = age),fill = "red",color = "black",
+                 bins = 20, na.rm = TRUE) +
+  ylab("Number") +
+  ggtitle("Age Distribution With NA")
+
+multiplot(p15,p16,cols = 2)
+
+Titanic_all$age = mice_output$age
+```
+
+我們用底下兩張圖 發現結果非常好 用mice包填補數據Age後 數據分佈沒有發生偏移
+於是我們便可以將mice_output裡面的age換掉原本Titanic_all裡面的Age了～
+
+
+## 3.2 建立模型(Random Forest)
+
+```{r}
+train <- Titanic_all[1:1000,]
+test <- Titanic_all[1001:1309,]
+set.seed(754) 
+rf_model <- randomForest(factor(survived) ~ pclass + sex + age + sibsp + fare + embarked + family + Title , data = train) 
+# 顯示模型誤差 
+plot(rf_model, ylim=c(0,0.36)) 
+legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+```
+
+我們利用訓練集訓練Random-Forest模型 
+
+
+上面那張圖中 黑色那條線表示：整體誤差率（the overall error rate）低於20% 紅色和綠色分別表示：遇難與生還的誤差率 因此我們可以說
+
+相對於生還來說，我們可以更準確的預測出死亡。
+
+## 3.3 預測結果
+
+```{r}
+prediction1 <- predict(rf_model,test)
+prediction2 <- predict(rf_model,train)
+success <- 0
+for(i in c(1:1000)){
+  if(prediction2[i] == Titanic_all$survived[i]){
+    success <- success + 1
+  }
+}
+print(success / 1000)
+
+solution <- data.frame(survived = prediction1)
+write.csv(solution,file = 'rf_mod_Solution.csv')
+```
+
+最後我們將test和train同時放入model中，並且看看train中的正確率，結果發現為0.889，因此就放心的把test的結果輸出，完成了這次的Project：）
+
+
+# 4.結論
+
+這次的Titanic分析 花了我滿長的一段時間，尤其是因為上禮拜感冒請假，沒有聽到上課的內容讓我對這次的主題不是很清楚，不過藉由查詢網路資料，也從中逐漸了解這次主題的目標。我覺得我這次學習到最多的便是使用各種視覺化的圖表，不管是密度圖 圓餅圖 直方圖 等等，很多都是我之前沒有嘗試過的，我也在參考網路的資源中，學習到如何用label，讓圖形更清楚的使別人理解我想表達的東西。
+
+最後的結果擁有將近九成的準確率讓我有點小驚訝，但想到本身model就是用train本身建的，所以真的test的結果可能就不會像train本身那麼高了。
+
+這次覺得比較可惜的部分可能就是因為還有其他科期中考，所以沒辦法花更多時間在使用不同model來預測我的資料，只能選用網路上較多且比較容易的Random Forest模型，不過我相信以後仍然會有許多時間鑽研機器學習的部分的！
