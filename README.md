@@ -131,3 +131,6 @@ Machine Learning Model學習(4/30 ~ 5/2)
 
 完成 Machine Learning部分 (5/1 5/2)
 
+完成 project3 - Titanic (4/27 ~ 5/2)
+
+https://joshchang1112.github.io/cs-x-programming/project3/Project3-Titanic.html
