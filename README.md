@@ -116,3 +116,18 @@ https://joshchang1112.github.io/cs-x-programming/project1/Project1.html
 
 Machine Learning初探 (4/19 ~ 4/21)
 
+
+## Week 8
+
+### 學習歷程
+
+更多學習ggplot2中的指令(geom_label,geom_text)(4/27 ~ 5/1)
+
+Machine Learning Model學習(4/30 ~ 5/2)
+
+### 作業進度
+
+完成視覺化分析 (4/27 ~ 4/30)
+
+完成 Machine Learning部分 (5/1 5/2)
+
