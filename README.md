@@ -85,6 +85,7 @@
 
 文字雲的呈現 完成hw4 (3/27)
 
+https://joshchang1112.github.io/cs-x-programming/hw4/hw4.html
 
 ## Week 5
 
@@ -98,6 +99,20 @@
 
 完成 task5 (4/5)
 
+https://joshchang1112.github.io/cs-x-programming/hw5/Hw5-NBAptt版_TFIDF_.html
+
 完成 project1 (4/10)
+
+https://joshchang1112.github.io/cs-x-programming/project1/Project1.html
   
-## Week 4
+
+## Week 6
+
+放假zzzzzzzzz
+
+
+
+## Week 7
+
+Machine Learning初探 (4/19 ~ 4/21)
+
