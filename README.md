@@ -134,3 +134,16 @@ Machine Learning Model學習(4/30 ~ 5/2)
 完成 project3 - Titanic (4/27 ~ 5/2)
 
 https://joshchang1112.github.io/cs-x-programming/project3/Project3-Titanic.html
+
+
+
+## Week 11
+
+完成 Project2 : kaggle 報告(Kobe Bryant Shot Selection) (In 陳昱鈞's github） 
+
+
+
+
+## Week 14
+
+完成 Project5 : Keras（In 陳昱鈞's github） 
