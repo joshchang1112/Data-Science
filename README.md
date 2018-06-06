@@ -69,6 +69,8 @@
 
 完成視覺化分析作業 (使用ggplot2套件) (3/17 ~ 3/18)
 
+https://joshchang1112.github.io/cs-x-programming/hw3/MLBggplot.html
+
 
 ## Week 4
 
