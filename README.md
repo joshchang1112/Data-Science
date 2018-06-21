@@ -69,6 +69,8 @@
 
 完成視覺化分析作業 (使用ggplot2套件) (3/17 ~ 3/18)
 
+https://joshchang1112.github.io/cs-x-programming/hw3/MLBggplot.html
+
 
 ## Week 4
 
@@ -116,3 +118,34 @@ https://joshchang1112.github.io/cs-x-programming/project1/Project1.html
 
 Machine Learning初探 (4/19 ~ 4/21)
 
+
+## Week 8
+
+### 學習歷程
+
+更多學習ggplot2中的指令(geom_label,geom_text)(4/27 ~ 5/1)
+
+Machine Learning Model學習(4/30 ~ 5/2)
+
+### 作業進度
+
+完成視覺化分析 (4/27 ~ 4/30)
+
+完成 Machine Learning部分 (5/1 5/2)
+
+完成 project3 - Titanic (4/27 ~ 5/2)
+
+https://joshchang1112.github.io/cs-x-programming/project3/Project3-Titanic.html
+
+
+
+## Week 11
+
+完成 Project2 : kaggle 報告(Kobe Bryant Shot Selection) (In 陳昱鈞's github） 
+
+
+
+
+## Week 14
+
+完成 Project5 : Keras（In 陳昱鈞's github） 
