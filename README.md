@@ -149,3 +149,18 @@ https://joshchang1112.github.io/cs-x-programming/project3/Project3-Titanic.html
 ## Week 14
 
 完成 Project5 : Keras（In 陳昱鈞's github） 
+
+
+
+## Week 17
+
+Final 完成（呼～）
+
+PDF : 
+
+https://github.com/joshchang1112/cs-x-programming/blob/master/Final%20project/CSX_Final.pdf
+
+R：
+
+
+
