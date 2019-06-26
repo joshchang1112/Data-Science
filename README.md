@@ -1,13 +1,6 @@
-# cs-x-programming
-嗨你好
+# Data Science
 
-我叫張頌平
-
-興趣是打籃球
-
-想要在這堂課 學習R
-
-謝謝大家
+My name is Josh, and this is my data science class learning process.
 
 ## Week 1
 
