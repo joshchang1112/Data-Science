@@ -62,7 +62,7 @@ My name is Josh, and this is my data science class learning process.
 
 完成視覺化分析作業 (使用ggplot2套件) (3/17 ~ 3/18)
 
-https://joshchang1112.github.io/Data-Science-R/hw3/MLBggplot.html
+https://joshchang1112.github.io/Data-Science/hw3/MLBggplot.html
 
 
 ## Week 4
@@ -80,7 +80,7 @@ https://joshchang1112.github.io/Data-Science-R/hw3/MLBggplot.html
 
 文字雲的呈現 完成hw4 (3/27)
 
-https://joshchang1112.github.io/Data-Science-R/hw4/hw4.html
+https://joshchang1112.github.io/Data-Science/hw4/hw4.html
 
 ## Week 5
 
@@ -94,11 +94,11 @@ https://joshchang1112.github.io/Data-Science-R/hw4/hw4.html
 
 完成 task5 (4/5)
 
-https://joshchang1112.github.io/Data-Science-R/hw5/Hw5-NBAptt版_TFIDF_.html
+https://joshchang1112.github.io/Data-Science/hw5/Hw5-NBAptt版_TFIDF_.html
 
 完成 project1 (4/10)
 
-https://joshchang1112.github.io/Data-Science-R/project1/Project1.html
+https://joshchang1112.github.io/Data-Science/project1/Project1.html
   
 
 ## Week 6
@@ -128,7 +128,7 @@ Machine Learning Model學習(4/30 ~ 5/2)
 
 完成 project3 - Titanic (4/27 ~ 5/2)
 
-https://joshchang1112.github.io/Data-Science-R/project3/Project3-Titanic.html
+https://joshchang1112.github.io/Data-Science/project3/Project3-Titanic.html
 
 
 
@@ -151,9 +151,9 @@ Final 完成（呼～）
 
 PDF : 
 
-https://github.com/joshchang1112/Data-Science-R/blob/master/Final%20project/CSX_Final.pdf
+https://github.com/joshchang1112/Data-Science/blob/master/Final%20project/CSX_Final.pdf
 
 R：
 
-https://github.com/joshchang1112/Data-Science-R/blob/master/Final%20project/CSX_Final.R
+https://github.com/joshchang1112/Data-Science/blob/master/Final%20project/CSX_Final.R
 
